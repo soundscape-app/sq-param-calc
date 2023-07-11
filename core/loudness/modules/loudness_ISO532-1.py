@@ -2,7 +2,7 @@
 ISO532-1에 따른 Loudness 계산 모듈입니다.
 '''
 import math
-from .core import *
+from core import *
 
 # 상수 정의
 N_LCBS = 3 
@@ -276,8 +276,6 @@ class Loudness_ISO532_1:
                 iX += 1
                 iY += 1
 
-            return pOutput
-        
         # 2차 filter
         @staticmethod
         def f_filter_2ndOrder(pInput, pOutput, coeffs, numSamples, gain):
@@ -294,8 +292,6 @@ class Loudness_ISO532_1:
                 Wn1 = Wn0
                 iX += 1
                 iY += 1
-
-            return pOutput
         
         # lowpass 1차 필터를 3번 사용해 Squaring, Smoothing
         @staticmethod
@@ -313,7 +309,7 @@ class Loudness_ISO532_1:
                     iX += 1
                 
                 for i in range(3):
-                    pInput = Loudness_ISO532_1 \
+                    Loudness_ISO532_1 \
                         .Filtering \
                         .f_lowpass(
                             pInput, pInput, tau, sampleRate, numSamples
@@ -331,7 +327,7 @@ class Loudness_ISO532_1:
 
                 pInput[iX] = out / (numSamples - numSkip)
             
-            return pInput, 0
+            return 0
 
         # 3차 filtering, squaring, smoothing, level calculation & downsampling by decFactor to SR_LEVEL
         @staticmethod
@@ -350,7 +346,7 @@ class Loudness_ISO532_1:
                         coeffs[k] = thirdOctaveFilterRef[j][k] - thirdOctaveFilters[i][j][k]
                     gain = filterGain[i][j]
 
-                    pOutput = Loudness_ISO532_1 \
+                    Loudness_ISO532_1 \
                         .Filtering \
                         .f_filter_2ndOrder(
                             pSignal.pData, pOutput, coeffs, numSamples, gain
@@ -359,7 +355,7 @@ class Loudness_ISO532_1:
                     pSignal.pData = pOutput
                 
                 centerFrequency = math.pow(10, (i - 16) / 10) * 1000
-                pOutput, err = Loudness_ISO532_1 \
+                err = Loudness_ISO532_1 \
                     .Filtering \
                     .f_square_and_smooth(
                         pOutput, centerFrequency, pSignal.sampleRate, numSamples, method, timeSkip
@@ -376,6 +372,162 @@ class Loudness_ISO532_1:
                     iX += decFactor
                     iO += 1
                 
-            return thirdOctaveLevel, 0
+            return 0
 
-# TODO: Temporal Weighting of Loudness, Loudness Calculation
+    class TemporalWeighting:
+        @staticmethod
+        def f_lowpass_intp(pInput, pOutput, tau, sampleRate, numSamples):
+            iX = 0
+            iY = 0
+
+            A1 = math.exp(-1 / (tau * sampleRate * LP_ITER))
+            B0 = 1 - A1
+            Y1 = 0
+
+            for time in range(numSamples):
+                X0 = pInput[iX]
+                iX += 1
+
+                Y1 = B0 * X0 + A1 * Y1
+                pOutput[iY] = Y1
+                iY += 1
+
+                if time < numSamples - 1:
+                    Xd = (pInput[iX] - X0) / LP_ITER
+                
+                    for i in range(1, LP_ITER):
+                        X0 += Xd
+                        Y1 = B0 * X0 + A1 * Y1
+            
+            return pOutput
+
+        @staticmethod
+        def f_temporal_weight_loudness(loudness, sampleRate, numSamples):
+            iL = 0
+            iL1 = 0
+            iL2 = 0
+
+            pLoudness_t1 = [0.0 for _ in range(numSamples)]
+            pLoudness_t2 = [0.0 for _ in range(numSamples)]
+
+            tau = 3.5e-3
+            Loudness_ISO532_1 \
+                .TemporalWeighting \
+                .f_lowpass_intp(
+                    loudness, pLoudness_t1, tau, sampleRate, numSamples
+                )
+            
+            tau = 70e-3
+            Loudness_ISO532_1 \
+                .TemporalWeighting \
+                .f_lowpass_intp(
+                    loudness, pLoudness_t2, tau, sampleRate, numSamples
+                )
+            
+            for time in range(numSamples):
+                loudness[iL] = 0.47 * pLoudness_t1[iL1] + 0.53 * pLoudness_t2[iL2]
+                iL += 1
+                iL1 += 1
+                iL2 += 1
+
+            return 0
+
+    class LoudnessCalculation:
+        RAP = [45., 55., 65., 71., 80., 90., 100., 120.]
+        DLL = [  
+            [-32.,-24.,-16.,-10.,-5.,0.,-7.,-3.,0.,-2.,0.],
+            [-29.,-22.,-15.,-10.,-4.,0.,-7.,-2.,0.,-2.,0.],
+            [-27.,-19.,-14., -9.,-4.,0.,-6.,-2.,0.,-2.,0.],
+            [-25.,-17.,-12., -9.,-3.,0.,-5.,-2.,0.,-2.,0.],
+            [-23.,-16.,-11., -7.,-3.,0.,-4.,-1.,0.,-1.,0.],
+            [-20.,-14.,-10., -6.,-3.,0.,-4.,-1.,0.,-1.,0.],
+            [-18.,-12., -9., -6.,-2.,0.,-3.,-1.,0.,-1.,0.],
+            [-15.,-10., -8., -4.,-2.,0.,-3.,-1.,0.,-1.,0.]
+        ]
+        LTQ = [30.,18.,12.,8.,7.,6.,5.,4.,3.,3.,3.,3.,3.,3.,3.,3.,3.,3.,3.,3.]
+        A0 = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,-0.5,-1.6,-3.2,-5.4,-5.6,-4.0,-1.5,2.0,5.0,12.0]
+        DDF = [0.0, 0.0, 0.5, 0.9, 1.2, 1.6, 2.3, 2.8, 3.0, 2.0, 0.0,-1.4,-2.0,-1.9,-1.0, 0.5,3.0, 4.0, 4.3, 4.0]
+        DCB = [-.25,-0.6,-0.8,-0.8,-0.5,0.0,0.5,1.1,1.5,1.7,1.8,1.8,1.7,1.6,1.4,1.2,0.8,0.5,0.0,-0.5]
+        ZUP = [0.9,1.8,2.8,3.5,4.4,5.4,6.6,7.9,9.2,10.6,12.3,13.8,15.2,16.7,18.1,19.3,20.6,21.8,22.7,23.6,24.0]
+        RNS = [21.5,18.0,15.1,11.5,9.0,6.1,4.4,3.1,2.13,1.36,0.82,0.42,0.30,0.22,0.15,0.10,0.035,0.0]
+        USL = [   
+            [ 13.00,8.20,6.30,5.50,5.50,5.50,5.50,5.50],
+            [ 9.00,7.50,6.00,5.10,4.50,4.50,4.50,4.50],
+            [ 7.80,6.70,5.60,4.90,4.40,3.90,3.90,3.90],
+            [ 6.20,5.40,4.60,4.00,3.50,3.20,3.20,3.20],
+            [ 4.50,3.80,3.60,3.20,2.90,2.70,2.70,2.70],
+            [ 3.70,3.00,2.80,2.35,2.20,2.20,2.20,2.20],
+            [ 2.90,2.30,2.10,1.90,1.80,1.70,1.70,1.70],
+            [ 2.40,1.70,1.50,1.35,1.30,1.30,1.30,1.30],
+            [ 1.95,1.45,1.30,1.15,1.10,1.10,1.10,1.10],
+            [ 1.50,1.20,0.94,0.86,0.82,0.82,0.82,0.82],
+            [ 0.72,0.67,0.64,0.63,0.62,0.62,0.62,0.62],
+            [ 0.59,0.53,0.51,0.50,0.42,0.42,0.42,0.42],
+            [ 0.40,0.33,0.26,0.24,0.22,0.22,0.22,0.22],
+            [ 0.27,0.21,0.20,0.18,0.17,0.17,0.17,0.17],
+            [ 0.16,0.15,0.14,0.12,0.11,0.11,0.11,0.11],
+            [ 0.12,0.11,0.10,0.08,0.08,0.08,0.08,0.08],
+            [ 0.09,0.08,0.07,0.06,0.06,0.06,0.06,0.05],
+            [ 0.06,0.05,0.03,0.02,0.02,0.02,0.02,0.02] 
+        ]
+
+        @staticmethod
+        def f_corr_third_octave_intensities(thirdOctaveLevel, thirdOctaveIntens, idxTime):
+            for i in range(N_LCB_BANDS):
+                idxLevelRange = 0
+                while thirdOctaveLevel[i][idxTime] > (
+                    Loudness_ISO532_1.LoudnessCalculation.RAP[idxLevelRange] - Loudness_ISO532_1.LoudnessCalculation.DLL[idxLevelRange][i]
+                    ) and idxLevelRange < N_RAP_RANGES - 1:
+                    idxLevelRange += 1
+                corrLevel = thirdOctaveLevel[i][idxTime] + Loudness_ISO532_1.LoudnessCalculation.DLL[idxLevelRange][i]
+                thirdOctaveIntens[i][idxTime] = math.pow(10., corrLevel / 10)
+
+        @staticmethod
+        def f_calc_lcbs(thirdOctaveIntens, lcb, idxTime):
+            pcbi = lcb[0]
+            pIntens = thirdOctaveIntens[0]
+            pcbi[idxTime] = pIntens[idxTime]
+
+            for i in range(1, 6):
+                pIntens = thirdOctaveIntens[i]
+                pcbi[idxTime] += pIntens[idxTime]
+
+            pcbi = lcb[1]
+            pIntens = thirdOctaveIntens[6]
+            pcbi[idxTime] = pIntens[idxTime]
+
+            for i in range(7, 9):
+                pIntens = thirdOctaveIntens[i]
+                pcbi[idxTime] += pIntens[idxTime]
+
+            pcbi = lcb[2]
+            pIntens = thirdOctaveIntens[9]
+            pcbi[idxTime] = pIntens[idxTime]
+
+            for i in range(10, N_LCB_BANDS):
+                pIntens = thirdOctaveIntens[i]
+                pcbi[idxTime] += pIntens[idxTime]
+
+            for i in range(N_LCBS):
+                pcbi = lcb[i]
+                if pcbi[idxTime] > 0.:
+                    pcbi[idxTime] = 10 * math.log10(pcbi[idxTime])
+
+
+if __name__ == "__main__":
+    ret = []
+    while True:
+        line =  input()
+        if line == "ex":
+            break
+        for letter in line:
+            if letter == "{":
+                ret.append("[")
+            elif letter == "}":
+                ret.append("]")
+            elif letter == "f":
+                continue
+            else:
+                ret.append(letter)
+        ret.append("\n")
+    print("".join(ret))            
