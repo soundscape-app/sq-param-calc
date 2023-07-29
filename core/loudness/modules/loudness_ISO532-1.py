@@ -513,21 +513,190 @@ class Loudness_ISO532_1:
                 if pcbi[idxTime] > 0.:
                     pcbi[idxTime] = 10 * math.log10(pcbi[idxTime])
 
+        @staticmethod
+        def f_calc_core_loudness(ThirdOctaveLevel, Lcb, CoreLoudness, SoundField, IdxTime):
+            
+            pLtqIdx = 0
+            pLtq = Loudness_ISO532_1.LoudnessCalculation.LTQ
 
-if __name__ == "__main__":
-    ret = []
-    while True:
-        line =  input()
-        if line == "ex":
-            break
-        for letter in line:
-            if letter == "{":
-                ret.append("[")
-            elif letter == "}":
-                ret.append("]")
-            elif letter == "f":
-                continue
+            for IdxCL in range(N_CORE_LOUDN - 1):
+                if(IdxCL < N_LCBS):
+                    pLe = Lcb[IdxCL] 
+                else:
+                    pLe = ThirdOctaveLevel[IdxCL + 8]
+                pCoreL = CoreLoudness[IdxCL]
+
+                pLe[IdxTime] -= Loudness_ISO532_1.LoudnessCalculation.A0[IdxCL]
+                pCoreL[IdxTime] = 0.
+
+                if(SoundField == SoundFieldDiffuse):
+                    pLe[IdxTime] += Loudness_ISO532_1.LoudnessCalculation.DDF[IdxCL]
+                
+                if(pLe[IdxTime] > pLtq[pLtqIdx]):
+                    pLe[IdxTime] += -Loudness_ISO532_1.LoudnessCalculation.DCB[IdxCL]
+                    S = .25
+                    MP1 = .0635 * (10. ** (0.025 * (pLtq[pLtqIdx])))
+                    MP2 = ((1. - S + S * (10. ** (0.1 * (pLe[IdxTime] - pLtq[pLtqIdx])))) ** .25) - 1.0
+                    pCoreL[IdxTime] = MP1 * MP2
+                    if(pCoreL[IdxTime] <= 0.):
+                        pCoreL = 0.
+                pLtqIdx += 1
+            
+            #Set last Critical band to zero
+            pCoreL = CoreLoudness[N_CORE_LOUDN - 1]
+            pCoreL[IdxTime] = 0.
+
+        @staticmethod
+        def f_corr_loudness(CoreLoudness, IdxTime):
+            pCoreLoudness = CoreLoudness[0]
+            CorrCL = 0.4 + 0.32 * (pCoreLoudness[IdxTime] ** .2)
+            if(CorrCL < 1.):
+                pCoreLoudness[IdxTime] *= CorrCL
+
+        @staticmethod
+        def f_calc_slopes(CoreLoudness, Loudness, SpecLoudness, IdxTime):
+            IdxCL = None; IdxNS = None; IdxCBN = None; IdxRNS = None #short
+            NextCriticalBand = None #int
+            N1 = None; N2 = None; Z = None; Z1 = None; Z2 = None; ZK = None; DZ = None #double
+            _USL = None; _ZUP = None; CoreL = None # double
+            pLoudness = Loudness; pCoreL = None
+            NS = [None for _ in range(N_BARK_BANDS)]
+
+            N1          = 0.
+            Z           = 0.1
+            Z1          = 0.
+            IdxRNS      = 0
+            IdxNS       = 0
+            pLoudness[IdxTime] = 0
+
+            for IdxCL in range(N_CORE_LOUDN):
+                pCoreL = CoreLoudness[IdxCL]
+                CoreL = pCoreL[IdxTime]
+                _ZUP = Loudness_ISO532_1.LoudnessCalculation.ZUP[IdxCL]
+                _ZUP += .0001
+                IdxCBN = IdxCL - 1
+                if(IdxCBN > N_CB_RANGES - 1):
+                    IdxCBN = N_CB_RANGES - 1
+                NextCriticalBand = 0
+                while True:
+                    if(N1 > CoreL):
+                        _USL = Loudness_ISO532_1.LoudnessCalculation.USL[IdxRNS][IdxCBN]
+                        N2 = Loudness_ISO532_1.LoudnessCalculation.RNS[IdxRNS]
+                        if(N2 < CoreL):
+                            N2 = CoreL
+                        DZ = (N1 - N2) / _USL
+                        Z2 = Z1 + DZ
+                        if(Z2 > _ZUP):
+                            NextCriticalBand = 1
+                            Z2 = _ZUP
+                            DZ = Z2 - Z1
+                            N2 = N1 - DZ * _USL
+
+                        pLoudness[IdxTime] += DZ * (N1 + N2) / 2.
+
+                        ZK = Z
+                        while(ZK <= Z2):
+                            NS[IdxNS] = N1 - (ZK - Z1) * _USL
+                            SpecLoudness[IdxNS][IdxTime] = NS[IdxNS]
+                            IdxNS += 1
+                            ZK += 0.1
+                        Z = ZK
+                    else:
+                        if(N1 < CoreL):
+                            IdxRNS = 0
+                            while((IdxRNS < N_RNS_RANGES) and Loudness_ISO532_1.LoudnessCalculation.RNS[IdxRNS] >= CoreL):
+                                IdxRNS += 1
+                        NextCriticalBand = 1
+                        Z2 = _ZUP
+                        N2 = CoreL
+                        pLoudness[IdxTime] += N2 * (Z2 - Z1)
+                        ZK = Z
+                        while(ZK <= Z2):
+                            NS[IdxNS] = N2
+                            SpecLoudness[IdxNS][IdxTime] = NS[IdxNS]
+                            IdxNS += 1
+                            ZK = ZK + 0.1
+                        Z = ZK
+                    
+                    while((N2 <= Loudness_ISO532_1.LoudnessCalculation.RNS[IdxRNS]) and (IdxRNS < N_RNS_RANGES - 1)):
+                        IdxRNS += 1
+                    if(IdxRNS > N_RNS_RANGES - 1):
+                        IdxRNS = N_RNS_RANGES - 1
+                    Z1 = Z2
+                    N1 = N2
+                    if(NextCriticalBand):
+                        break
+            if(pLoudness[IdxTime] < 0.):
+                pLoudness[IdxTime] = 0        
+
+        @staticmethod
+        def f_loudness_from_levels(ThirdOctaveLevel, NumSamplesLevel, SoundField, Method, OutLoudness, OutSpecLoudness):
+            CoreLoudness = [[0 for _ in range(NumSamplesLevel)] for _ in range(N_CORE_LOUDN)]
+            ThirdOctaveIntens = [[0 for _ in range(NumSamplesLevel)] for _ in range[N_LCB_BANDS]]
+            Lcb = [[0 for _ in range(NumSamplesLevel)] for _ in range[N_LCBS]]
+
+            IdxTime = None
+            SampleRateLevel = None
+            retval = None
+
+            SampleRateLevel = SR_LEVEL
+
+            #Calculate core Loudness
+            for IdxTime in range(NumSamplesLevel):
+                Loudness_ISO532_1.LoudnessCalculation.f_corr_third_octave_intensities(ThirdOctaveLevel, ThirdOctaveIntens, IdxTime)
+                Loudness_ISO532_1.LoudnessCalculation.f_calc_lcbs(ThirdOctaveIntens, Lcb, IdxTime)
+                Loudness_ISO532_1.LoudnessCalculation.f_calc_core_loudness(ThirdOctaveLevel, Lcb, CoreLoudness, SoundField, IdxTime)
+            
+            #Correction of specific loudness within lowest critical band
+            for IdxTime in range(NumSamplesLevel):
+                Loudness_ISO532_1.LoudnessCalculation.f_corr_loudness(CoreLoudness, IdxTime)
+            
+            #Time-varying loudness: nonlinearity
+            if (Method == LoudnessMethodTimeVarying):
+                f_nl(CoreLoudness, SampleRateLevel, NumSamplesLevel)
+            
+            #Calculation of sepcific loudness
+            for IdxTime in range(NumSamplesLevel):
+                Loudness_ISO532_1.LoudnessCalculation.f_calc_slopes(CoreLoudness, OutLoudness, OutSpecLoudness, IdxTime)
+            
+            #Time-carying loudness: temporal weighting
+            if (Method == LoudnessMethodTimeVarying):
+                retval = Loudness_ISO532_1.TemporalWeighting.f_temporal_weight_loudness(OutLoudness, SampleRateLevel, NumSamplesLevel)
+                if(retval < 0):
+                    return retval
+            
+            return NumSamplesLevel
+        
+        @staticmethod
+        def f_loudness_from_signal(pSignal : InputData, SoundField, Method, TimeSkip, OutLoudness, OutSpecLoudness, SizeOutput):
+            ThirdOctaveLevel = [[0 for _ in NumSamplesLevel] for _ in range(N_LEVEL_BANDS)]
+            SampleRateLevel = 1
+            DecRactorLevel = 1
+            NumSamplesTime = 1
+            NumSamplesLevel = 1
+
+            retval = None
+
+            if (Method == LoudnessMethodStationary):
+                DecFactorLevel = (int)(pSignal.NumSamples)
+            elif (Method == LoudnessMethodTimeVarying):
+                SampleRateLevel = SR_LEVEL
+
+                DecFactorLevel = (int)(pSignal.SampleRate / SampleRateLevel)
+
+                NumSamplesTime = pSignal.NumSamples
+                NumSamplesLevel = NumSamplesTime / DecFactorLevel
             else:
-                ret.append(letter)
-        ret.append("\n")
-    print("".join(ret))            
+                return LoudnessErrorUnsupportedMethod
+            
+            if (SizeOutput < NumSamplesLevel):
+                return LoudnessErrorOutputVectorTooSmall
+            
+            #Calculate third octave levels
+            retval = Loudness_ISO532_1.Filtering.f_calc_third_octave_levels(pSignal, ThirdOctaveLevel, DecFactorLevel, Method, TimeSkip)
+            if(retval < 0):
+                return retval
+            
+            retval = Loudness_ISO532_1.LoudnessCalculation.f_loudness_from_levels(ThirdOctaveLevel, NumSamplesLevel, SoundField, Method, OutLoudness, OutSpecLoudness)
+
+            return retval

@@ -9,7 +9,7 @@ SoundFieldDiffuse = 1
 # Error Codes
 LoudnessErrorOutputVectorTooSmall = -1
 # LoudnessErrorMemoryAllocFailed = -2
-LoudnessUnsupportedMethod = -3
+LoudnessErrorUnsupportedMethod = -3
 LoudnessErrorSignalTooShort = -4
 
 # Input Data Class
