@@ -7,6 +7,7 @@ Helper methods
 import math
 ld = __import__("loudness_ISO532-1")
 from core import *
+import struct
 
 #constant
 M_PI = math.pi
@@ -211,31 +212,197 @@ class Loudness_ISO532_1_helper:
             Signal = wavfile()
             pfile = open(pFileName, "rb")
             if (pfile):
+                #ID, Should be RIFF
                 Signal.Id = pfile.read(4)
                 if(Signal.Id == "RIFF".encode()):
-                    Signal.Size = int.from_bytes(pfile.read(1 * 4), "big")
+                    #Size-8
+                    Signal.Size = int.from_bytes(pfile.read(1 * 4), "little")
+                    #ID, Should be WAVE
                     Signal.Id = pfile.read(4)
                     if(Signal.Id == "WAVE".encode()):
-                        
-                    
-                    
-                    
+                        #Format string
+                        Signal.Id = pfile.read(4)
+                        #Format length
+                        Signal.FormatLength = int.from_bytes(pfile.read(1 * 4), "little")
+                        #Format tag
+                        Signal.FormatTag = int.from_bytes(pfile.read(1 * 2), "little")
+                        if (Signal.FormatTag == PCM or Signal.FormatTag == IEEE_FLOAT):
+                            #Channels, only one channel supported
+                            Signal.Channels = int.from_bytes(pfile.read(1 * 2), "little")
+                            if(Signal.Channels == 1):
+                                #Sample rate
+                                Signal.SampleRate = int.from_bytes(pfile.read(1 * 4), "little")
+                                #Bytes/second
+                                Signal.BytesSec = int.from_bytes(pfile.read(1 * 4), "little")
+                                #Frame size, number of bytes/sample
+                                Signal.BlockAlign = int.from_bytes(pfile.read(1 * 2), "little")
+                                #Bits/sample
+                                Signal.BitsPerSample = int.from_bytes(pfile.read(1 * 2), "little")
+                                if(Signal.FormatLength != 16):
+                                    Signal.ExtraParam = int.from_bytes(pfile.read(1 * 2), "little")
+                                #Signature, should be 'data'
+                                Signal.Id = pfile.read(4)
+                                if(Signal.Id == "data".encode()):
+                                    #Number of bytes in data block
+                                    Signal.DataSize = int.from_bytes(pfile.read(1 * 4), "little")
+                                    Signal.NumSamples = Signal.DataSize // Signal.BlockAlign
+                                    if(Signal.BitsPerSample == 16):
+                                        Input.pData = [0.0 for _ in range(Signal.NumSamples)]
+                                        Signal.pTemp16 = [0 for _ in range(Signal.NumSamples)]
+                                        for i in range(Signal.NumSamples):
+                                            Signal.pTemp16[i] = int.from_bytes(pfile.read(1 * 2), "little")
+                                        pData = Input.pData
+                                        pTemp16 = Signal.pTemp16
+                                        for IdxTime in range(Signal.NumSamples):
+                                            pData[IdxTime] = (float)(pTemp16[IdxTime]) / 32768
+                                        Input.numSamples = Signal.NumSamples
+                                        Input.sampleRate = (float)(Signal.SampleRate)
+                                    elif(Signal.BitsPerSample == 32):
+                                        Input.pData = [0.0 for _ in range(Signal.NumSamples)]
+                                        Signal.pTemp32 = [0.0 for _ in range(Signal.NumSamples)]
+                                        for i in range(Signal.NumSamples):
+                                            byte_arr = pfile.read(1 * 4, "little")
+                                            binary_str = b''.join(byte_arr)
+                                            Signal.pTemp16[i] = struct.unpack('<f', binary_str)[0]
+                                        pData = Input.pData
+                                        pTemp32 = Signal.pTemp32
+                                        NanFoundInFile = 0
+                                        for IdxTime in range(Signal.NumSamples):
+                                            if(math.isnan(pTemp32[IdxTime])):
+                                                pData[IdxTime] = 0.0
+                                                NanFoundInFile = 1
+                                            else:
+                                                pData[IdxTime] = (float)(pTemp32[IdxTime])
+                                        Input.numSamples = Signal.NumSamples
+                                        Input.sampleRate = (float)(Signal.SampleRate)
+                                        if(NanFoundInFile == 1):
+                                            f_print_err_msg_and_exit("WAVE file may not contain NaN values")
+                                    else:
+                                        f_print_err_msg_and_exit("only 16-bit and 32-bit WAVE files are allowed")
+                                else:
+                                    f_print_err_msg_and_exit("invalid header")
+                            else:
+                                f_print_err_msg_and_exit("only files containing on channel are allowed")
+                        else:
+                            f_print_err_msg_and_exit("only PCM and IEEE FLOAT wav files are allowed")
+                    else:
+                        f_print_err_msg_and_exit("not a WAVE file")
+                else:
+                    f_print_err_msg_and_exit("not a RIFF file")
+                pfile.close()
+            else:
+                f_print_err_msg_and_exit("file not found")
                 
-                    
-                
-                
-                
-                    
-                        
-                
-                            
-                    
+            if(Signal.SampleRate != 48000):
+                if(Signal.SampleRate == 32000 or Signal.SampleRate == 44100):
+                    retval = Loudness_ISO532_1_helper.Resampling.f_resample_to_48kHz(Input)
+                    if(retval < 0):
+                        f_print_err_msg_and_exit("Resampling failed")
+                else:
+                    f_print_err_msg_and_exit("only sampling rates of 32kHz, 44.1kHz or 48kHz supported")
             
+            if(Signal.BitsPerSample == 32):
+                return 0
+            else:
+                return 1
             
-                
+    class Maximum_and_percentile_calculation:
+        #returns maximum value of buffer
+        @staticmethod
+        def f_max_of_buffer(pSignal, NumSamples):
+            Maximum = 0
             
+            for IdxTime in range(NumSamples):
+                if(pSignal[IdxTime] > Maximum):
+                    Maximum = pSignal[IdxTime]
+                    
+            return Maximum
+        
+        #Comparing function for qsort
+        @staticmethod
+        def f_compare(a, b):
+            if(a < b):
+                return -1
+            return (a > b)
+        
+        #Sorts buffer and computes percentile value
+        @staticmethod
+        def f_calc_percentile(pSignal, Percentile, NumSamples):
+            Np = (int)((1 - Percentile / 100.) * NumSamples)
+            
+            pSortBuffer = [0. for _ in range(NumSamples)]
+            for IdxTime in range(NumSamples):
+                pSortBuffer[IdxTime] = pSignal[IdxTime]
+            
+            pSortBuffer.sort(key = \
+                Loudness_ISO532_1_helper.Maximum_and_percentile_calculation.f_compare)
+            
+            PercentileValue = 0.                  
+            
+            if(Percentile == 0):
+                PercentileValue = pSortBuffer[NumSamples - 1]
+            elif(Percentile == 100):
+                PercentileValue = pSortBuffer[0]
+            else:
+                PercentileValue = (pSortBuffer[Np - 1] + pSortBuffer[Np]) / 2
+            
+            return PercentileValue
 
-
-#For debugging
-if __name__ == "__main__":
-    pass
+    class Write_results_to_file:
+        #Output: write specific loudness to file
+        @staticmethod
+        def f_write_specloudness_to_file(pData, NumSamples, DecFactor, pFileName, \
+            SoundField, SampleRateLoudness, OutputPrecision, OutputPercentile):
+            TimeRes = 1. / SampleRateLoudness * 1000
+            NameWithEnding = pFileName + ".csv"
+            pFile = open(NameWithEnding, "w")
+            SoundFieldStrine = None
+            if(not pFile):
+                Count = 1
+                while(not pFile and Count < 10):
+                    NameWithEnding = f"{pFileName}({Count}).csv"
+                    Count += 1
+                if(Count == 10):
+                    Str1 = f"Could not write to file {NameWithEnding}"
+                    f_print_err_msg_and_exit(Str1)
+            
+            if(SoundField == SoundFieldDiffuse):
+                SoundFieldString = "diffuse field"
+            elif(SoundField == SoundFieldFree):
+                SoundFieldString = "free field"
+            
+            if(NumSamples > 1):
+                pFile.write("Specific loudness calculation according to ISO532 for time varying sounds\n")
+            else:
+                pFile.write("Specific loudness calculation according to ISO 532-1 for stationary sounds\n")
+            pFile.write(f"N' / (sone / Bark) ({SoundFieldString})\n;", end = "")
+            pFile.write(f"t / s \\ Bark;", end = "")
+            for IdxFB in range(N_BARK_BANDS):
+                pFile.write(f"{((float)(IdxFB + 1) / 10) : .{OutputPrecision}f};", end = "")
+            pFile.write()
+            for IdxTime in range(NumSamples):
+                pFile.write(f"{(float)(IdxTime) / (float)(SampleRateLoudness) / (float)(DecFactor)\
+                    : .{OutputPrecision}f};", end = "")
+                for IdxFB in range(N_BARK_BANDS):
+                    pFile.write(f"{pData[IdxFB][IdxTime] : .{OutputPrecision}f};", end = "")
+                pFile.write()
+            pFile.close()
+            
+        #Output: write loudness buffer to file
+        @staticmethod
+        def f_write_loudness_to_file(pData, NumSamples, DecFactor, pFileName,\
+            Maximum, Percentile, SoundField, SampleRateLoudness, OutputPrecision, OutputPercentile):
+            TimeRes = 1. / SampleRateLoudness * 1000
+            NameWithEnding = f"{pFileName}.csv"
+            pFile = open(NameWithEnding, "w")
+            if(not pFile):
+                Count = 1
+                while(not pFile and Count < 10):
+                    NameWithEnding = f"{pFileName}({Count}).csv"
+                    pFile = open(NameWithEnding, "w")
+                if(Count == 10):
+                    Str1 = f"could not write to file {NameWithEnding}"
+                    f_print_err_msg_and_exit(Str1)
+            
+            if(SoundField == SoundFieldDiffuse):
+                pass #790
