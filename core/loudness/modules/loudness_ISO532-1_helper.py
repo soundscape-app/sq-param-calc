@@ -372,9 +372,9 @@ class Loudness_ISO532_1_helper:
                 SoundFieldString = "free field"
             
             if(NumSamples > 1):
-                pFile.write("Specific loudness calculation according to ISO532 for time varying sounds\n")
+                pFile.write("Specific loudness calculation according to ISO532 for time varying sounds;\n;")
             else:
-                pFile.write("Specific loudness calculation according to ISO 532-1 for stationary sounds\n")
+                pFile.write("Specific loudness calculation according to ISO 532-1 for stationary sounds;\n;")
             pFile.write(f"N' / (sone / Bark) ({SoundFieldString})\n;", end = "")
             pFile.write(f"t / s \\ Bark;", end = "")
             for IdxFB in range(N_BARK_BANDS):
@@ -394,6 +394,7 @@ class Loudness_ISO532_1_helper:
             Maximum, Percentile, SoundField, SampleRateLoudness, OutputPrecision, OutputPercentile):
             TimeRes = 1. / SampleRateLoudness * 1000
             NameWithEnding = f"{pFileName}.csv"
+            Strf = f".{OutputPrecision}f"
             pFile = open(NameWithEnding, "w")
             if(not pFile):
                 Count = 1
@@ -405,4 +406,153 @@ class Loudness_ISO532_1_helper:
                     f_print_err_msg_and_exit(Str1)
             
             if(SoundField == SoundFieldDiffuse):
-                pass #790
+                SoundFieldString = "diffuse field"
+            elif(SoundField == SoundFieldFree):
+                SoundFieldString = "free field"
+            
+            if(NumSamples > 1):
+                pFile.write("Loudness calculation according to ISO 532-1 for time varying sounds;\n;")
+                
+                Str1 = f"{Maximum : {Strf}}"
+                pFile.write(f"Nmax / sone ({SoundFieldString}); {Str1}")
+                
+                Str1 = f"{Percentile : {Strf}}"
+                pFile.write(f"N{OutputPercentile} / sone ({SoundFieldString}); {Str1}")
+                
+                pFile.write(f";\nt / s; N / sone ({SoundFieldString})")
+                
+                pDataIdx = 0
+                for IdxTime in range(NumSamples // DecFactor):
+                    pFile.write(f"{(float)(IdxTime) / (float)(SampleRateLoudness) : {Strf}};{pData[pDataIdx] : {Strf}}")
+                    pDataIdx += DecFactor
+            else:
+                pFile.write("Loudness calculation according to ISO 532-1 for stationary sounds;\n;")
+                
+                Str1 = f"{Maximum : {Strf}}"
+                pFile.write(f"N / sone ({SoundFieldString}); {Str1}")
+            
+                Str1 = f"{Loudness_ISO532_1_helper.Write_results_to_file.f_sone_to_phon(Maximum) : {Strf}}"
+                pFile.write(f"LN / phon ({SoundFieldString}); {Str1}")
+            pFile.close()
+        
+        #Decimation by DecFactor
+        @staticmethod
+        def f_downsampling(pInput, pOutput, NumInSamples, DecFactor):
+            NumOutSamples = NumInSamples / DecFactor
+            
+            pX = 0 #pInput
+            pY = 0 #pOutput
+            for IdxTime in range(NumOutSamples):
+                pOutput[pY] = pInput[pX]
+                pX += DecFactor
+                pY += 1
+            
+            return NumOutSamples
+        
+        #Conversion from sone to phon
+        @staticmethod
+        def f_sone_to_phon(Loudness):
+            LoudnessLevel = None
+            if (Loudness < 1.):
+                LoudnessLevel = 40. * ((Loudness + .0005) ** .35)
+                if(LoudnessLevel < 3.):
+                    LoudnessLevel = 3.
+            else:
+                LoudnessLevel = 10. * ((math.log(Loudness))) / math.log(2.) + 40.
+            return LoudnessLevel
+        
+        #Replace commas in a string with a dot
+        @staticmethod
+        def f_replace_comma_with_dot(value, length):
+            ret = ""
+            for i in range(len(value)):
+                if(value[i] == ',' and i < length):
+                    ret += '.'
+                else:
+                    ret += value[i]
+            return ret
+        
+        #Check if the stirng is a colon separated list, i.e. contains at least one colon
+        @staticmethod
+        def f_is_colon_spareated_list(value, length):
+            counter = 0
+            for i in range(length):
+                if(value[i] == ':'):
+                    counter += 1
+            if(counter == N_LEVEL_BANDS - 1):
+                return 1
+            return 0
+        
+        #Read 28 third octave levels from a colon separated list
+        @staticmethod
+        def f_levels_from_list(ThirdOctaveLevels, listString, length):
+            valueCounter = 0
+            startPosition = 0
+            endPosition = 0
+            
+            while(valueCounter < N_LEVEL_BANDS - 1 and endPosition < length):
+                if(listString[endPosition] != ':'):
+                    endPosition += 1
+                else:
+                    endPosition += 1
+                    value = float(listString + startPosition)
+                    ThirdOctaveLevels[valueCounter][0] = value
+                    valueCounter += 1
+                    startPosition = endPosition
+            
+            if(valueCounter == N_LEVEL_BANDS - 1 and startPosition < length):
+                value = float(listString + startPosition)
+                ThirdOctaveLevels[valueCounter][0] = value
+            else:
+                return -1
+            return 0
+        
+        #Check if string is an empty line, i.e. only white space
+        @staticmethod
+        def f_is_empty_line(buffer, bufferSize):
+            for i in range(bufferSize):
+                if(buffer[i] == 0):
+                    break
+                if(buffer[i] != ' ' and buffer[i] != '\t' and buffer[i] != '\n'):
+                    return 0
+            return 1
+        
+        #Read next non-commment and non-empty line from text file
+        @staticmethod
+        def f_read_next_line(buffer, bufferSize, file):
+            while(True):
+                buffer = file.readline()
+                if((not buffer) or len(buffer) == bufferSize - 1):
+                    return -1
+                if(buffer[0] != '#' and Loudness_ISO532_1_helper.Write_results_to_file.f_is_empty_line(buffer, MAX_BUF_SIZE) == 0):
+                    return len(buffer)
+
+        #Read 28 third octave levels from file
+        def f_levels_from_file(ThirdOctaveLevels, filename):
+            valueCounter = 0
+            line = None
+            pfile = open(filename, "rb")
+            if(pfile):
+                valueCounter = 0
+                while(valueCounter < N_LEVEL_BANDS):
+                    resultLength = Loudness_ISO532_1_helper.Write_results_to_file.f_read_next_line(line, MAX_BUF_SIZE, pfile)
+                    if(resultLength < 0):
+                        f_print_err_msg_and_exit("Error while reading file.")
+                    
+                    Loudness_ISO532_1_helper.Write_results_to_file.f_replace_comma_with_dot(line, resultLength)
+                    
+                    startPosition = 0
+                    while(startPosition < resultLength and line[startPosition] != ':'):
+                        startPosition += 1
+                    startPosition += 1
+                    
+                    if(startPosition < resultLength):
+                        value = float(line + startPosition)
+                        ThirdOctaveLevels[valueCounter][0] = value
+                        valueCounter += 1
+                    else:
+                        f_print_err_msg_and_exit("Invalid line in file.")
+            else:
+                f_print_err_msg_and_exit("Opening file failed.")
+            pfile.close()
+            return 0
