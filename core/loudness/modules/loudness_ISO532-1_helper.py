@@ -5,7 +5,7 @@ Helper methods
 '''
 
 import math
-ld = __import__("loudness_ISO532-1")
+ld = __import__("loudness_ISO532-1", fromlist = "loudness_ISO532-1")
 from core import *
 import struct
 
