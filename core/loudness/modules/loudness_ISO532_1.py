@@ -2,7 +2,8 @@
 ISO532-1에 따른 Loudness 계산 모듈입니다.
 '''
 import math
-from core import *
+import time
+from .core import *
 
 # 상수 정의
 N_LCBS = 3 
@@ -475,8 +476,8 @@ class Loudness_ISO532_1:
         def f_corr_third_octave_intensities(thirdOctaveLevel, thirdOctaveIntens, idxTime):
             for i in range(N_LCB_BANDS):
                 idxLevelRange = 0
-                while thirdOctaveLevel[i][idxTime] > (
-                    Loudness_ISO532_1.LoudnessCalculation.RAP[idxLevelRange] - Loudness_ISO532_1.LoudnessCalculation.DLL[idxLevelRange][i]
+                while thirdOctaveLevel[i][idxTime] > ( \
+                    Loudness_ISO532_1.LoudnessCalculation.RAP[idxLevelRange] - Loudness_ISO532_1.LoudnessCalculation.DLL[idxLevelRange][i] \
                     ) and idxLevelRange < N_RAP_RANGES - 1:
                     idxLevelRange += 1
                 corrLevel = thirdOctaveLevel[i][idxTime] + Loudness_ISO532_1.LoudnessCalculation.DLL[idxLevelRange][i]
@@ -579,9 +580,16 @@ class Loudness_ISO532_1:
                     IdxCBN = N_CB_RANGES - 1
                 NextCriticalBand = 0
                 while True:
+                    print(N1, end = ' ')
+                    print(N2, end = ' ')
+                    print(CoreL, end = ' ')
+                    print(_USL, end = ' ')
+                    print(IdxRNS)
+                    time.sleep(1)
                     if(N1 > CoreL):
                         _USL = Loudness_ISO532_1.LoudnessCalculation.USL[IdxRNS][IdxCBN]
                         N2 = Loudness_ISO532_1.LoudnessCalculation.RNS[IdxRNS]
+                        
                         if(N2 < CoreL):
                             N2 = CoreL
                         DZ = (N1 - N2) / _USL
@@ -591,7 +599,6 @@ class Loudness_ISO532_1:
                             Z2 = _ZUP
                             DZ = Z2 - Z1
                             N2 = N1 - DZ * _USL
-
                         pLoudness[IdxTime] += DZ * (N1 + N2) / 2.
 
                         ZK = Z
@@ -632,8 +639,8 @@ class Loudness_ISO532_1:
         @staticmethod
         def f_loudness_from_levels(ThirdOctaveLevel, NumSamplesLevel, SoundField, Method, OutLoudness, OutSpecLoudness):
             CoreLoudness = [[0 for _ in range(NumSamplesLevel)] for _ in range(N_CORE_LOUDN)]
-            ThirdOctaveIntens = [[0 for _ in range(NumSamplesLevel)] for _ in range[N_LCB_BANDS]]
-            Lcb = [[0 for _ in range(NumSamplesLevel)] for _ in range[N_LCBS]]
+            ThirdOctaveIntens = [[0 for _ in range(NumSamplesLevel)] for _ in range(N_LCB_BANDS)]
+            Lcb = [[0 for _ in range(NumSamplesLevel)] for _ in range(N_LCBS)]
 
             IdxTime = None
             SampleRateLevel = None
@@ -654,7 +661,8 @@ class Loudness_ISO532_1:
             #Time-varying loudness: nonlinearity
             if (Method == LoudnessMethodTimeVarying):
                 f_nl(CoreLoudness, SampleRateLevel, NumSamplesLevel)
-            
+            for i in range(len(CoreLoudness)):
+                print(CoreLoudness[i])
             #Calculation of sepcific loudness
             for IdxTime in range(NumSamplesLevel):
                 Loudness_ISO532_1.LoudnessCalculation.f_calc_slopes(CoreLoudness, OutLoudness, OutSpecLoudness, IdxTime)

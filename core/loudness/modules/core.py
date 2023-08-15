@@ -15,15 +15,15 @@ LoudnessErrorSignalTooShort = -4
 # Input Data Class
 class InputData:
     def __init__(self):
-        numSamples = 0
-        sampleRate = 0
-        pData = None
+        self.numSamples = 0
+        self.sampleRate = 0
+        self.pData = None
 
 # Constants
 I_REF = 4e-10
 SR_LEVEL = 2000
 N_LEVEL_BANDS = 28
-N_BARK_BANDS = 240
+N_BARK_BANDS = 240  
 
 PCM = 1
 IEEE_FLOAT = 3

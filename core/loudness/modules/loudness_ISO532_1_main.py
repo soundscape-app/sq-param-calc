@@ -3,10 +3,10 @@ Loudness calculation according to ISO532-1,
 methods for stationary and time varying signals
 '''
 import math
-from core import *
+from .core import *
 import locale
-ld = __import__("loudness_ISO532-1", fromlist = ["loudness_ISO532-1"])
-ldh = __import__("loundess_ISO532-1_helper", fromlist = ["loudness_ISO532-1_helper"])
+from .loudness_ISO532_1 import *
+from .loudness_ISO532_1_helper import *
 
 # Constant
 MAX_BUF_SIZE = 256
@@ -33,6 +33,8 @@ def main(argv):
 
     argc = len(argv)
 
+    
+
     DecFactorLevel = 1
     DecFactorLoudness = 1
     SampleLevel = 1
@@ -43,16 +45,19 @@ def main(argv):
     locale.setlocale(locale.LC_ALL, "English")
 
     currentCmdArgIndex = 1
+    Method = 2147483647
+    ThirdOctaveLevel = [[0 for _ in range(NumSamplesLevel)] for _ in range(N_LEVEL_BANDS)]
+    SoundField = 2147483647
 
     # First Argument: Stationary|Time_varying
     if(argc > currentCmdArgIndex):
         CmdArgBuffer = argv[currentCmdArgIndex]
-        if(CmdArgBuffer[:4] == "STAT"):
+        if(CmdArgBuffer[:4] == "Stat"):
             Method = LoudnessMethodStationary
         elif(CmdArgBuffer[:4] == "Time"):
             Method = LoudnessMethodTimeVarying
         else:
-            ldh.f_print_err_msg_and_exit("Unsupported loudness method.")
+            f_print_err_msg_and_exit("Unsupported loudness method.")
     
     # Second argument: (F|D)
     currentCmdArgIndex = 2
@@ -63,7 +68,7 @@ def main(argv):
         elif(CmdArgBuffer[0] == "F"):
             SoundField = SoundFieldFree
         else:
-            ldh.f_print_err_msg_and_exit("Unsupported sound field type")
+            f_print_err_msg_and_exit("Unsupported sound field type")
     
     '''
     Third argument:
@@ -75,7 +80,7 @@ def main(argv):
 				argc == 4: 32-bit float WAVE file
 				argc == 6: 16-bit integer WAVE file	
     '''
-    
+    CalculationMode = 0
     currentCmdArgIndex = 3
     if(argc > currentCmdArgIndex):
         if((Method == LoudnessMethodStationary and argc > currentCmdArgIndex + 1) or \
@@ -84,7 +89,7 @@ def main(argv):
 
             InputName = (argv[currentCmdArgIndex])[:MAX_BUF_SIZE]
             
-            ReferenceFileNeeded = ldh.f_read_wavfile(InputName)
+            ReferenceFileNeeded = Loudness_ISO532_1_helper.Read_WAVE_file.f_read_wavfile(InputName, Signal)
             
             currentCmdArgIndex = 4
             if(argc > currentCmdArgIndex + 1):
@@ -95,15 +100,15 @@ def main(argv):
                 currentCmdArgIndex = 5
                 CmdArgBuffer = (argv[currentCmdArgIndex])[:MAX_BUF_SIZE]
                 
-                ldh.f_replace_comma_with_dot(CmdArgBuffer, MAX_BUF_SIZE)
+                Loudness_ISO532_1_helper.Write_results_to_file.f_replace_comma_with_dot(CmdArgBuffer, MAX_BUF_SIZE)
 
                 ReferenceLevel = float(CmdArgBuffer)
                 if(ReferenceLevel < 20 or ReferenceLevel > 120):
-                    ldh.f_print_err_msg_and_exit("please choose 20 < 'Calibration level in dB rms' < 120")
+                    f_print_err_msg_and_exit("please choose 20 < 'Calibration level in dB rms' < 120")
                 
                 # Read reference file
-                if(ldh.f_read_wavfile(ReferenceName, RefSignal) != 1):
-                    ldh.f_print_err_msg_and_exit("Reference file contains no integer data")
+                if(Loudness_ISO532_1_helper.Read_WAVE_file.f_read_wavfile(ReferenceName, RefSignal) != 1):
+                    f_print_err_msg_and_exit("Reference file contains no integer data")
                 
                 # Calculate calibration factor
                 pData = 0
@@ -123,7 +128,7 @@ def main(argv):
                 currentCmdArgIndex = 6
             else:
                 if(ReferenceFileNeeded == 1):
-                    ldh.f_print_err_msg_and_exit("For integer data please specify calibration file and calibration level")
+                    f_print_err_msg_and_exit("For integer data please specify calibration file and calibration level")
                 
             # Fourth or sixth argument
             # when Method == LoudnessMethodStationary: time skip
@@ -131,15 +136,15 @@ def main(argv):
                 if(argc > currentCmdArgIndex):
                     CmdArgBuffer = argv[currentCmdArgIndex][:MAX_BUF_SIZE]
 
-                    ldh.f_replace_comma_with_dot(CmdArgBuffer, MAX_BUF_SIZE)
+                    Loudness_ISO532_1_helper.Write_results_to_file.f_replace_comma_with_dot(CmdArgBuffer, MAX_BUF_SIZE)
 
                     TimeSkip = float(CmdArgBuffer)
                     if(TimeSkip < 0 or TimeSkip > 1):
-                        ldh.f_print_err_msg_and_exit("0 <= <time skip value> / s <= 1")
+                        f_print_err_msg_and_exit("0 <= <time skip value> / s <= 1")
                     if(TimeSkip >= Signal.NumSamples / Signal.SampleRate):
-                        ldh.f_print_err_msg_and_exit("<time skip value> >= signal duration")
+                        f_print_err_msg_and_exit("<time skip value> >= signal duration")
                 else:
-                    ldh.f_print_err_msg_and_exit("Input argument <time skip value> missing.")
+                    f_print_err_msg_and_exit("Input argument <time skip value> missing.")
             else:
                 CalculationMode = CalculationModeFromLevels
 
@@ -149,24 +154,24 @@ def main(argv):
 
                 # Check loudness method
                 if(Method == LoudnessMethodTimeVarying):
-                    ldh.f_print_err_msg_and_exit("Direct input of third octave levels only supported for stationary method")
+                    f_print_err_msg_and_exit("Direct input of third octave levels only supported for stationary method")
 
                 # Copy argument
                 CmdArgBuffer = argv[currentCmdArgIndex][:MAX_BUF_SIZE]
                 
                 # If colon separated list, this argument is a list of third octave levels
-                if(ldh.f_is_colon_separated_list(CmdArgBuffer, MAX_BUF_SIZE)):
-                    ldh.f_replace_comma_with_dot(CmdArgBuffer, MAX_BUF_SIZE)
+                if(Loudness_ISO532_1_helper.Write_results_to_file.f_is_colon_separated_list(CmdArgBuffer, MAX_BUF_SIZE)):
+                    Loudness_ISO532_1_helper.Write_results_to_file.f_replace_comma_with_dot(CmdArgBuffer, MAX_BUF_SIZE)
                     
-                    retval = ldh.f_levels_from_list(ThirdOctaveLevel, CmdArgBuffer, MAX_BUF_SIZE)
+                    retval = Loudness_ISO532_1_helper.Write_results_to_file.f_levels_from_list(ThirdOctaveLevel, CmdArgBuffer, MAX_BUF_SIZE)
                     if(retval < 0):
-                        ldh.f_print_err_msg_and_exit("Extraction of level values from input argument failed")
+                        f_print_err_msg_and_exit("Extraction of level values from input argument failed")
 
                 # otherwise it is assumed to be the filename of a file containing the third octave levels
                 else:
-                    retval = ldh.f_levels_from_file(ThirdOctaveLevel, CmdArgBuffer)
+                    retval = Loudness_ISO532_1_helper.Write_results_to_file.f_levels_from_file(ThirdOctaveLevel, CmdArgBuffer)
                     if(retval < 0):
-                        ldh.f_print_err_msg_and_exit("Reading levels from file failed")
+                        f_print_err_msg_and_exit("Reading levels from file failed")
     
     # Set locate back to default
     locale.setlocale(locale.LC_ALL, "")
@@ -174,31 +179,31 @@ def main(argv):
     if(Method == LoudnessMethodTimeVarying): # Always from signal
         SampleRateLevel = SR_LEVEL
         SampleRateLoudness = SR_LOUDNESS
-        DecFactorLevel = (int)(Signal.SampleRate / SampleRateLevel)
+        DecFactorLevel = (int)(Signal.sampleRate / SampleRateLevel)
         DecFactorLoudness = (int)(SampleRateLevel / SampleRateLoudness)
-        NumSamplesLevel = Signal.NumSamples / DecFactorLevel
+        NumSamplesLevel = Signal.numSamples / DecFactorLevel
         NumSamplesLoudness = NumSamplesLevel / DecFactorLoudness
     
     # Memory Allocation
     
     OutLoudness = [0. for _ in range(NumSamplesLevel)]
-    OutSpecLoudness = [[0. for _ in range(NumSamplesLevel)] for _ in range[N_BARK_BANDS]]
+    OutSpecLoudness = [[0. for _ in range(NumSamplesLevel)] for _ in range(N_BARK_BANDS)]
 
     # Actual loudness calculation
     if(CalculationMode == CalculationModeFromSignal):
-        retval = ldh.f_loudness_from_signal(Signal, SoundField, Method, TimeSkip, \
+        retval = Loudness_ISO532_1.LoudnessCalculation.f_loudness_from_signal(Signal, SoundField, Method, TimeSkip, \
                                             OutLoudness, OutSpecLoudness, NumSamplesLevel)
     elif(CalculationMode == CalculationModeFromLevels):
-        retval = ldh.f_loudness_from_levels(ThirdOctaveLevel, NumSamplesLevel, SoundField, \
+        retval = Loudness_ISO532_1.LoudnessCalculation.f_loudness_from_levels(ThirdOctaveLevel, NumSamplesLevel, SoundField, \
                                             Method, OutLoudness, OutSpecLoudness)
     else:
-        ldh.f_print_err_msg_and_exit("Internal error occured")
+        f_print_err_msg_and_exit("Internal error occured")
     
     if(retval < 0):
         if(retval == LoudnessErrorOutputVectorTooSmall):
-            ldh.f_print_err_msg_and_exit("result vector too small")
+            f_print_err_msg_and_exit("result vector too small")
         else:
-            ldh.f_print_err_msg_and_exit("An error occurred during loudness calculation")
+            f_print_err_msg_and_exit("An error occurred during loudness calculation")
     
     NumSamplesLevel = retval
 
@@ -209,29 +214,29 @@ def main(argv):
     elif(SoundField == SoundFieldFree):
         SoundFieldString = "free field"
     else:
-        ldh.f_print_err_msg_and_exit("Invalid sound field type")
+        f_print_err_msg_and_exit("Invalid sound field type")
     
     # Downsampling to SR_LOUDNESS for time varying loudness
     if(Method == LoudnessMethodTimeVarying):
-        ldh.f_write_specloudness_to_file(OutSpecLoudness, NumSamplesLevel, DecFactorLoudness,\
+        Loudness_ISO532_1_helper.Write_results_to_file.f_write_specloudness_to_file(OutSpecLoudness, NumSamplesLevel, DecFactorLoudness,\
                                          SPECL_OUT_NAME, SoundField, SampleRateLoudness, OUTPUT_PREC, P_OUTPUT)
 
-        NumSamplesLoudness = ldh.f_downsampling(OutLoudness, OutLoudness, NumSamplesLevel, DecFactorLoudness)
-        Maximum = ldh.f_max_of_buffer(OutLoudness, P_OUTPUT, NumSamplesLoudness)
-        Percentile = ldh.f_calc_percentile(OutLoudness, P_OUTPUT, NumSamplesLoudness)
+        NumSamplesLoudness = Loudness_ISO532_1_helper.Write_results_to_file.f_downsampling(OutLoudness, OutLoudness, NumSamplesLevel, DecFactorLoudness)
+        Maximum = Loudness_ISO532_1_helper.Maximum_and_percentile_calculation.f_max_of_buffer(OutLoudness, P_OUTPUT, NumSamplesLoudness)
+        Percentile = Loudness_ISO532_1_helper.Maximum_and_percentile_calculation.f_calc_percentile(OutLoudness, P_OUTPUT, NumSamplesLoudness)
 
-        ldh.f_write_loudness_to_file(OutLoudness, NumSamplesLoudness, 1, LOUD_OUT_NAME, Maximum, Percentile, \
+        Loudness_ISO532_1_helper.Write_results_to_file.f_write_loudness_to_file(OutLoudness, NumSamplesLoudness, 1, LOUD_OUT_NAME, Maximum, Percentile, \
                                      SoundField, SampleRateLoudness, OUTPUT_PREC, P_OUTPUT)
-        LoudnessLevel = ldh.f_sone_to_phon(Percentile)
+        LoudnessLevel = Loudness_ISO532_1_helper.Write_results_to_file.f_sone_to_phon(Percentile)
 
         print(f"\nLoudness (Nmax) / sone ({SoundFieldString}): {Maximum : 6.2f}\n\nLoudness (N{P_OUTPUT}) /sone ({SoundFieldString}): {Percentile : 6.2f}")
     else:
-        ldh.f_write_specloudness_to_file(OutSpecLoudness, NumSamplesLevel, DecFactorLoudness, SPECL_OUT_NAME, \
+        Loudness_ISO532_1_helper.Write_results_to_file.f_write_specloudness_to_file(OutSpecLoudness, NumSamplesLevel, DecFactorLoudness, SPECL_OUT_NAME, \
                                          SoundField, SampleRateLoudness, OUTPUT_PREC, P_OUTPUT)
 
-        ldh.f_write_loudness_to_file(OutLoudness, NumSamplesLevel, 1, LOUD_OUT_NAME, OutLoudness[0], OutLoudness[0], \
+        Loudness_ISO532_1_helper.Write_results_to_file.f_write_loudness_to_file(OutLoudness, NumSamplesLevel, 1, LOUD_OUT_NAME, OutLoudness[0], OutLoudness[0], \
                                      SoundField, SampleRateLoudness, OUTPUT_PREC, P_OUTPUT)
         
-        LoudnessLevel = ldh.f_sone_to_phon(OutLoudness[0])
+        LoudnessLevel = Loudness_ISO532_1_helper.Write_results_to_file.f_sone_to_phon(OutLoudness[0])
         print(f"\nLoudness (N) / sone ({SoundFieldString}): {OutLoudness[0] : 6.2f}\n\nLoudness level (LN) / phon ({SoundFieldString}): {LoudnessLevel : 5.1f}")
         

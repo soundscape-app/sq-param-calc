@@ -5,8 +5,8 @@ Helper methods
 '''
 
 import math
-ld = __import__("loudness_ISO532-1", fromlist = "loudness_ISO532-1")
-from core import *
+from .loudness_ISO532_1 import *
+from .core import *
 import struct
 
 #constant
@@ -381,8 +381,7 @@ class Loudness_ISO532_1_helper:
                 pFile.write(f"{((float)(IdxFB + 1) / 10) : .{OutputPrecision}f};", end = "")
             pFile.write()
             for IdxTime in range(NumSamples):
-                pFile.write(f"{(float)(IdxTime) / (float)(SampleRateLoudness) / (float)(DecFactor)\
-                    : .{OutputPrecision}f};", end = "")
+                pFile.write(f"{(float)(IdxTime) / (float)(SampleRateLoudness) / (float)(DecFactor) : .{OutputPrecision}f};", end = "")
                 for IdxFB in range(N_BARK_BANDS):
                     pFile.write(f"{pData[IdxFB][IdxTime] : .{OutputPrecision}f};", end = "")
                 pFile.write()
@@ -474,7 +473,7 @@ class Loudness_ISO532_1_helper:
         
         #Check if the stirng is a colon separated list, i.e. contains at least one colon
         @staticmethod
-        def f_is_colon_spareated_list(value, length):
+        def f_is_colon_separated_list(value, length):
             counter = 0
             for i in range(length):
                 if(value[i] == ':'):
@@ -528,6 +527,7 @@ class Loudness_ISO532_1_helper:
                     return len(buffer)
 
         #Read 28 third octave levels from file
+        @staticmethod
         def f_levels_from_file(ThirdOctaveLevels, filename):
             valueCounter = 0
             line = None
