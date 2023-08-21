@@ -113,15 +113,15 @@ def main(argv):
                 # Calculate calibration factor
                 pData = 0
                 IntensSum = 0
-                for IdxTime in range(RefSignal.NumSamples):
+                for IdxTime in range(RefSignal.numSamples):
                     IntensSum += (RefSignal.pData[pData] ** 2)
                     pData += 1
-                IntensSum /= RefSignal.NumSamples
+                IntensSum /= RefSignal.numSamples
                 CalFactor = math.sqrt((10 ** (ReferenceLevel / 10)) * I_REF / IntensSum)
                 
                 # Apply calibration factor to input signal
                 pData = 0
-                for IdxTime in range(Signal.NumSamples):
+                for IdxTime in range(Signal.numSamples):
                     Signal.pData[pData] *= CalFactor
                     pData += 1
                 
@@ -141,7 +141,7 @@ def main(argv):
                     TimeSkip = float(CmdArgBuffer)
                     if(TimeSkip < 0 or TimeSkip > 1):
                         f_print_err_msg_and_exit("0 <= <time skip value> / s <= 1")
-                    if(TimeSkip >= Signal.NumSamples / Signal.SampleRate):
+                    if(TimeSkip >= Signal.numSamples / Signal.sampleRate):
                         f_print_err_msg_and_exit("<time skip value> >= signal duration")
                 else:
                     f_print_err_msg_and_exit("Input argument <time skip value> missing.")
@@ -198,7 +198,6 @@ def main(argv):
                                             Method, OutLoudness, OutSpecLoudness)
     else:
         f_print_err_msg_and_exit("Internal error occured")
-    
     if(retval < 0):
         if(retval == LoudnessErrorOutputVectorTooSmall):
             f_print_err_msg_and_exit("result vector too small")

@@ -8,6 +8,7 @@ import math
 from .loudness_ISO532_1 import *
 from .core import *
 import struct
+from struct import unpack
 
 #constant
 M_PI = math.pi
@@ -125,7 +126,7 @@ class Loudness_ISO532_1_helper:
                     pCoeffs = 0
                     
                     Diff = (IdxOut * Denominator) % Numerator
-                    
+                    print(Diff)
                     IdxLastS = IdxOut * Denominator / Numerator
                     
                     pCoeffs +=Diff
@@ -225,21 +226,26 @@ class Loudness_ISO532_1_helper:
                         #Format length
                         Signal.FormatLength = int.from_bytes(pfile.read(1 * 4), "little")
                         #Format tag
-                        Signal.FormatTag = int.from_bytes(pfile.read(1 * 2), "little")
+                        barray = pfile.read(1 * 2)
+                        Signal.FormatTag = unpack('<'+'h'*(len(barray)//2),barray)[0]
                         if (Signal.FormatTag == PCM or Signal.FormatTag == IEEE_FLOAT):
                             #Channels, only one channel supported
-                            Signal.Channels = int.from_bytes(pfile.read(1 * 2), "little")
+                            barray = pfile.read(1 * 2)
+                            Signal.Channels = unpack('<'+'h'*(len(barray)//2),barray)[0]
                             if(Signal.Channels == 1):
                                 #Sample rate
                                 Signal.SampleRate = int.from_bytes(pfile.read(1 * 4), "little")
                                 #Bytes/second
                                 Signal.BytesSec = int.from_bytes(pfile.read(1 * 4), "little")
                                 #Frame size, number of bytes/sample
-                                Signal.BlockAlign = int.from_bytes(pfile.read(1 * 2), "little")
+                                barray = pfile.read(1 * 2)
+                                Signal.BlockAlign = unpack('<'+'h'*(len(barray)//2),barray)[0]
                                 #Bits/sample
-                                Signal.BitsPerSample = int.from_bytes(pfile.read(1 * 2), "little")
+                                barray = pfile.read(1 * 2)
+                                Signal.BitsPerSample = unpack('<'+'h'*(len(barray)//2),barray)[0]
                                 if(Signal.FormatLength != 16):
-                                    Signal.ExtraParam = int.from_bytes(pfile.read(1 * 2), "little")
+                                    barray = pfile.read(1 * 2)
+                                    Signal.ExtraParam = unpack('<'+'h'*(len(barray)//2),barray)[0]
                                 #Signature, should be 'data'
                                 Signal.Id = pfile.read(4)
                                 if(Signal.Id == "data".encode()):
@@ -250,7 +256,8 @@ class Loudness_ISO532_1_helper:
                                         Input.pData = [0.0 for _ in range(Signal.NumSamples)]
                                         Signal.pTemp16 = [0 for _ in range(Signal.NumSamples)]
                                         for i in range(Signal.NumSamples):
-                                            Signal.pTemp16[i] = int.from_bytes(pfile.read(1 * 2), "little")
+                                            barray = pfile.read(1 * 2)
+                                            Signal.pTemp16[i] = unpack('<'+'h'*(len(barray)//2),barray)[0]
                                         pData = Input.pData
                                         pTemp16 = Signal.pTemp16
                                         for IdxTime in range(Signal.NumSamples):
@@ -292,7 +299,7 @@ class Loudness_ISO532_1_helper:
                 pfile.close()
             else:
                 f_print_err_msg_and_exit("file not found")
-                
+            
             if(Signal.SampleRate != 48000):
                 if(Signal.SampleRate == 32000 or Signal.SampleRate == 44100):
                     retval = Loudness_ISO532_1_helper.Resampling.f_resample_to_48kHz(Input)
@@ -372,19 +379,19 @@ class Loudness_ISO532_1_helper:
                 SoundFieldString = "free field"
             
             if(NumSamples > 1):
-                pFile.write("Specific loudness calculation according to ISO532 for time varying sounds;\n;")
+                pFile.write("Specific loudness calculation according to ISO532 for time varying sounds,\n,\n")
             else:
-                pFile.write("Specific loudness calculation according to ISO 532-1 for stationary sounds;\n;")
-            pFile.write(f"N' / (sone / Bark) ({SoundFieldString})\n;", end = "")
-            pFile.write(f"t / s \\ Bark;", end = "")
+                pFile.write("Specific loudness calculation according to ISO 532-1 for stationary sounds,\n,\n")
+            pFile.write(f"N' / (sone / Bark) ({SoundFieldString})\n,\n")
+            pFile.write(f"t / s \\ Bark,")
             for IdxFB in range(N_BARK_BANDS):
-                pFile.write(f"{((float)(IdxFB + 1) / 10) : .{OutputPrecision}f};", end = "")
-            pFile.write()
+                pFile.write(f"{((float)(IdxFB + 1) / 10) : .{OutputPrecision}f},")
+            pFile.write("\n")
             for IdxTime in range(NumSamples):
-                pFile.write(f"{(float)(IdxTime) / (float)(SampleRateLoudness) / (float)(DecFactor) : .{OutputPrecision}f};", end = "")
+                pFile.write(f"{(float)(IdxTime) / (float)(SampleRateLoudness) / (float)(DecFactor) : .{OutputPrecision}f},")
                 for IdxFB in range(N_BARK_BANDS):
-                    pFile.write(f"{pData[IdxFB][IdxTime] : .{OutputPrecision}f};", end = "")
-                pFile.write()
+                    pFile.write(f"{pData[IdxFB][IdxTime] : .{OutputPrecision}f},")
+                pFile.write("\n")
             pFile.close()
             
         #Output: write loudness buffer to file
@@ -410,28 +417,28 @@ class Loudness_ISO532_1_helper:
                 SoundFieldString = "free field"
             
             if(NumSamples > 1):
-                pFile.write("Loudness calculation according to ISO 532-1 for time varying sounds;\n;")
+                pFile.write("Loudness calculation according to ISO 532-1 for time varying sounds,\n,\n")
                 
                 Str1 = f"{Maximum : {Strf}}"
-                pFile.write(f"Nmax / sone ({SoundFieldString}); {Str1}")
+                pFile.write(f"Nmax / sone ({SoundFieldString}), {Str1}\n")
                 
                 Str1 = f"{Percentile : {Strf}}"
-                pFile.write(f"N{OutputPercentile} / sone ({SoundFieldString}); {Str1}")
+                pFile.write(f"N{OutputPercentile} / sone ({SoundFieldString}), {Str1}\n")
                 
-                pFile.write(f";\nt / s; N / sone ({SoundFieldString})")
+                pFile.write(f",\nt / s, N / sone ({SoundFieldString})\n")
                 
                 pDataIdx = 0
                 for IdxTime in range(NumSamples // DecFactor):
-                    pFile.write(f"{(float)(IdxTime) / (float)(SampleRateLoudness) : {Strf}};{pData[pDataIdx] : {Strf}}")
+                    pFile.write(f"{(float)(IdxTime) / (float)(SampleRateLoudness) : {Strf}},{pData[pDataIdx] : {Strf}}\n")
                     pDataIdx += DecFactor
             else:
-                pFile.write("Loudness calculation according to ISO 532-1 for stationary sounds;\n;")
+                pFile.write("Loudness calculation according to ISO 532-1 for stationary sounds,\n,\n")
                 
                 Str1 = f"{Maximum : {Strf}}"
-                pFile.write(f"N / sone ({SoundFieldString}); {Str1}")
+                pFile.write(f"N / sone ({SoundFieldString}), {Str1}\n")
             
                 Str1 = f"{Loudness_ISO532_1_helper.Write_results_to_file.f_sone_to_phon(Maximum) : {Strf}}"
-                pFile.write(f"LN / phon ({SoundFieldString}); {Str1}")
+                pFile.write(f"LN / phon ({SoundFieldString}), {Str1}\n")
             pFile.close()
         
         #Decimation by DecFactor
