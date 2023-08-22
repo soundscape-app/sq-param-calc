@@ -145,33 +145,35 @@ def main(argv):
                         f_print_err_msg_and_exit("<time skip value> >= signal duration")
                 else:
                     f_print_err_msg_and_exit("Input argument <time skip value> missing.")
-            else:
-                CalculationMode = CalculationModeFromLevels
+        else:
+            CalculationMode = CalculationModeFromLevels
 
-                NumSamplesLevel = 1
+            NumSamplesLevel = 1
 
-                ThirdOctaveLevel = [[0 for _ in range(NumSamplesLevel)] for _ in range(N_LEVEL_BANDS)]
+            ThirdOctaveLevel = [[0 for _ in range(NumSamplesLevel)] for _ in range(N_LEVEL_BANDS)]
 
-                # Check loudness method
-                if(Method == LoudnessMethodTimeVarying):
-                    f_print_err_msg_and_exit("Direct input of third octave levels only supported for stationary method")
+            # Check loudness method
+            if(Method == LoudnessMethodTimeVarying):
+                f_print_err_msg_and_exit("Direct input of third octave levels only supported for stationary method")
 
-                # Copy argument
-                CmdArgBuffer = argv[currentCmdArgIndex][:MAX_BUF_SIZE]
+            # Copy argument
+            CmdArgBuffer = argv[currentCmdArgIndex][:MAX_BUF_SIZE]
+            # If colon separated list, this argument is a list of third octave levels
+            print(f"1. {CmdArgBuffer}")
+            if(Loudness_ISO532_1_helper.Write_results_to_file.f_is_colon_separated_list(CmdArgBuffer, MAX_BUF_SIZE)):
+                print(f"2. {CmdArgBuffer}")
+                Loudness_ISO532_1_helper.Write_results_to_file.f_replace_comma_with_dot(CmdArgBuffer, MAX_BUF_SIZE)
                 
-                # If colon separated list, this argument is a list of third octave levels
-                if(Loudness_ISO532_1_helper.Write_results_to_file.f_is_colon_separated_list(CmdArgBuffer, MAX_BUF_SIZE)):
-                    Loudness_ISO532_1_helper.Write_results_to_file.f_replace_comma_with_dot(CmdArgBuffer, MAX_BUF_SIZE)
-                    
-                    retval = Loudness_ISO532_1_helper.Write_results_to_file.f_levels_from_list(ThirdOctaveLevel, CmdArgBuffer, MAX_BUF_SIZE)
-                    if(retval < 0):
-                        f_print_err_msg_and_exit("Extraction of level values from input argument failed")
+                retval = Loudness_ISO532_1_helper.Write_results_to_file.f_levels_from_list(ThirdOctaveLevel, CmdArgBuffer, MAX_BUF_SIZE)
+                if(retval < 0):
+                    f_print_err_msg_and_exit("Extraction of level values from input argument failed")
 
-                # otherwise it is assumed to be the filename of a file containing the third octave levels
-                else:
-                    retval = Loudness_ISO532_1_helper.Write_results_to_file.f_levels_from_file(ThirdOctaveLevel, CmdArgBuffer)
-                    if(retval < 0):
-                        f_print_err_msg_and_exit("Reading levels from file failed")
+            # otherwise it is assumed to be the filename of a file containing the third octave levels
+            else:
+                print(f"3. {CmdArgBuffer}")
+                retval = Loudness_ISO532_1_helper.Write_results_to_file.f_levels_from_file(ThirdOctaveLevel, CmdArgBuffer)
+                if(retval < 0):
+                    f_print_err_msg_and_exit("Reading levels from file failed")
     
     # Set locate back to default
     locale.setlocale(locale.LC_ALL, "")

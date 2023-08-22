@@ -12,6 +12,16 @@ from struct import unpack
 
 #constant
 M_PI = math.pi
+import inspect, re
+
+def varName(var):
+    lcls = inspect.stack()[2][0].f_locals
+    for name in lcls:
+        if id(var) == id(lcls[name]):
+            return name
+    return None
+def DEBUG(x):
+    print(f"{varName(x)}: {x}")
 
 class KaiserBessel:
     def __init__(self):
@@ -19,7 +29,6 @@ class KaiserBessel:
         self.BesselOfBeta = 0
         self.Length = 0
         self.SquareLenHalf = 0
-    
 
 def f_print_err_msg_and_exit(Msg):
     print(f"An error occured:\n{Msg}\n")
@@ -126,7 +135,6 @@ class Loudness_ISO532_1_helper:
                     pCoeffs = 0
                     
                     Diff = (IdxOut * Denominator) % Numerator
-                    print(Diff)
                     IdxLastS = IdxOut * Denominator / Numerator
                     
                     pCoeffs +=Diff
@@ -482,7 +490,7 @@ class Loudness_ISO532_1_helper:
         @staticmethod
         def f_is_colon_separated_list(value, length):
             counter = 0
-            for i in range(length):
+            for i in range(min(length, len(value))):
                 if(value[i] == ':'):
                     counter += 1
             if(counter == N_LEVEL_BANDS - 1):
@@ -525,34 +533,34 @@ class Loudness_ISO532_1_helper:
         
         #Read next non-commment and non-empty line from text file
         @staticmethod
-        def f_read_next_line(buffer, bufferSize, file):
+        def f_read_next_line(bufferContainer, bufferSize, file):
             while(True):
-                buffer = file.readline()
-                if((not buffer) or len(buffer) == bufferSize - 1):
+                bufferContainer[0] = str(file.readline())
+                if((not bufferContainer[0]) or len(bufferContainer[0]) == bufferSize - 1):
                     return -1
-                if(buffer[0] != '#' and Loudness_ISO532_1_helper.Write_results_to_file.f_is_empty_line(buffer, MAX_BUF_SIZE) == 0):
-                    return len(buffer)
+                if(bufferContainer[0][0] != '#' and Loudness_ISO532_1_helper.Write_results_to_file.f_is_empty_line(bufferContainer[0], MAX_BUF_SIZE) == 0):
+                    return len(bufferContainer[0])
 
         #Read 28 third octave levels from file
         @staticmethod
         def f_levels_from_file(ThirdOctaveLevels, filename):
             valueCounter = 0
-            line = None
+            line = ""
             pfile = open(filename, "rb")
             if(pfile):
                 valueCounter = 0
                 while(valueCounter < N_LEVEL_BANDS):
-                    resultLength = Loudness_ISO532_1_helper.Write_results_to_file.f_read_next_line(line, MAX_BUF_SIZE, pfile)
+                    line_Container = [line]
+                    resultLength = Loudness_ISO532_1_helper.Write_results_to_file.f_read_next_line(line_Container, MAX_BUF_SIZE, pfile)
+                    line = line_Container[0]
                     if(resultLength < 0):
                         f_print_err_msg_and_exit("Error while reading file.")
-                    
                     Loudness_ISO532_1_helper.Write_results_to_file.f_replace_comma_with_dot(line, resultLength)
                     
                     startPosition = 0
                     while(startPosition < resultLength and line[startPosition] != ':'):
                         startPosition += 1
                     startPosition += 1
-                    
                     if(startPosition < resultLength):
                         value = float(line + startPosition)
                         ThirdOctaveLevels[valueCounter][0] = value
