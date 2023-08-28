@@ -27,7 +27,7 @@ CalculationModeFromLevels = 0
 CalculationModeFromSignal = 1
 CalculationModeInvalid = 2
 
-def main(argv):
+def loudness_main(argv):
     Signal = InputData()
     RefSignal = InputData()
 
@@ -183,13 +183,13 @@ def main(argv):
         SampleRateLoudness = SR_LOUDNESS
         DecFactorLevel = (int)(Signal.sampleRate / SampleRateLevel)
         DecFactorLoudness = (int)(SampleRateLevel / SampleRateLoudness)
-        NumSamplesLevel = Signal.numSamples / DecFactorLevel
-        NumSamplesLoudness = NumSamplesLevel / DecFactorLoudness
+        NumSamplesLevel = Signal.numSamples // DecFactorLevel
+        NumSamplesLoudness = NumSamplesLevel // DecFactorLoudness
     
     # Memory Allocation
-    
     OutLoudness = [0. for _ in range(NumSamplesLevel)]
     OutSpecLoudness = [[0. for _ in range(NumSamplesLevel)] for _ in range(N_BARK_BANDS)]
+    TimeSkip = 0
 
     # Actual loudness calculation
     if(CalculationMode == CalculationModeFromSignal):
@@ -223,7 +223,7 @@ def main(argv):
                                          SPECL_OUT_NAME, SoundField, SampleRateLoudness, OUTPUT_PREC, P_OUTPUT)
 
         NumSamplesLoudness = Loudness_ISO532_1_helper.Write_results_to_file.f_downsampling(OutLoudness, OutLoudness, NumSamplesLevel, DecFactorLoudness)
-        Maximum = Loudness_ISO532_1_helper.Maximum_and_percentile_calculation.f_max_of_buffer(OutLoudness, P_OUTPUT, NumSamplesLoudness)
+        Maximum = Loudness_ISO532_1_helper.Maximum_and_percentile_calculation.f_max_of_buffer(OutLoudness, NumSamplesLoudness)
         Percentile = Loudness_ISO532_1_helper.Maximum_and_percentile_calculation.f_calc_percentile(OutLoudness, P_OUTPUT, NumSamplesLoudness)
 
         Loudness_ISO532_1_helper.Write_results_to_file.f_write_loudness_to_file(OutLoudness, NumSamplesLoudness, 1, LOUD_OUT_NAME, Maximum, Percentile, \
@@ -240,4 +240,6 @@ def main(argv):
         
         LoudnessLevel = Loudness_ISO532_1_helper.Write_results_to_file.f_sone_to_phon(OutLoudness[0])
         print(f"\nLoudness (N) / sone ({SoundFieldString}): {OutLoudness[0] : 6.2f}\n\nLoudness level (LN) / phon ({SoundFieldString}): {LoudnessLevel : 5.1f}")
+    
+
         

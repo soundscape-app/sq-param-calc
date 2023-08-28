@@ -87,14 +87,14 @@ def f_nl(coreLoudness, sampleRate, numSamples):
     for i in range(N_CORE_LOUDN):
         NlLp.UoLast = 0
         NlLp.U2Last = 0
-        idx = i
+        idx = 0
 
         for time in range(numSamples - 1):
-            nextInput = coreLoudness[idx + 1]
-            delta = (nextInput - coreLoudness[idx]) / NL_ITER
+            nextInput = coreLoudness[i][idx + 1]  
+            delta = (nextInput - coreLoudness[i][idx]) / NL_ITER
 
-            Ui = coreLoudness[idx]
-            coreLoudness[idx] = NlLp.f_nl_lp(Ui)
+            Ui = coreLoudness[i][idx]
+            coreLoudness[i][idx] = NlLp.f_nl_lp(Ui)
             Ui += delta
 
             for j in range(1, NL_ITER):
@@ -103,7 +103,7 @@ def f_nl(coreLoudness, sampleRate, numSamples):
 
             idx += 1
         
-        coreLoudness[idx] = NlLp.f_nl_lp(coreLoudness[idx])
+        coreLoudness[i][idx] = NlLp.f_nl_lp(coreLoudness[i][idx])
 
     return coreLoudness
 
@@ -671,7 +671,7 @@ class Loudness_ISO532_1:
                 DecFactorLevel = (int)(pSignal.sampleRate / SampleRateLevel)
 
                 NumSamplesTime = pSignal.numSamples
-                NumSamplesLevel = NumSamplesTime / DecFactorLevel
+                NumSamplesLevel = NumSamplesTime // DecFactorLevel
                 ThirdOctaveLevel = [[0 for _ in range(NumSamplesLevel)] for _ in range(N_LEVEL_BANDS)]
             else:
                 return LoudnessErrorUnsupportedMethod

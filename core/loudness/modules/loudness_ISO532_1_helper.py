@@ -349,8 +349,7 @@ class Loudness_ISO532_1_helper:
             for IdxTime in range(NumSamples):
                 pSortBuffer[IdxTime] = pSignal[IdxTime]
             
-            pSortBuffer.sort(key = \
-                Loudness_ISO532_1_helper.Maximum_and_percentile_calculation.f_compare)
+            pSortBuffer.sort()
             
             PercentileValue = 0.                  
             
@@ -452,7 +451,7 @@ class Loudness_ISO532_1_helper:
         #Decimation by DecFactor
         @staticmethod
         def f_downsampling(pInput, pOutput, NumInSamples, DecFactor):
-            NumOutSamples = NumInSamples / DecFactor
+            NumOutSamples = NumInSamples // DecFactor
             
             pX = 0 #pInput
             pY = 0 #pOutput
