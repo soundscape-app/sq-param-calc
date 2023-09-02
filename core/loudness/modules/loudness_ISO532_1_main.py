@@ -211,7 +211,7 @@ def loudness_main(argv):
     # PostProcessing
 
     if(SoundField == SoundFieldDiffuse):
-        SoundFieldString = "diffues field"
+        SoundFieldString = "diffuse field"
     elif(SoundField == SoundFieldFree):
         SoundFieldString = "free field"
     else:
@@ -230,7 +230,8 @@ def loudness_main(argv):
                                      SoundField, SampleRateLoudness, OUTPUT_PREC, P_OUTPUT)
         LoudnessLevel = Loudness_ISO532_1_helper.Write_results_to_file.f_sone_to_phon(Percentile)
 
-        print(f"\nLoudness (Nmax) / sone ({SoundFieldString}): {Maximum : 6.2f}\n\nLoudness (N{P_OUTPUT}) /sone ({SoundFieldString}): {Percentile : 6.2f}")
+        print(f"\nLoudness (Nmax) / sone ({SoundFieldString}): {Maximum : 6.2f}\n\nLoudness (N{P_OUTPUT}) / sone ({SoundFieldString}): {Percentile : 6.2f}")
+        return (f"{Maximum : 6.2f}", f"{Percentile : 6.2f}", OutSpecLoudness)
     else:
         Loudness_ISO532_1_helper.Write_results_to_file.f_write_specloudness_to_file(OutSpecLoudness, NumSamplesLevel, DecFactorLoudness, SPECL_OUT_NAME, \
                                          SoundField, SampleRateLoudness, OUTPUT_PREC, P_OUTPUT)
@@ -240,6 +241,7 @@ def loudness_main(argv):
         
         LoudnessLevel = Loudness_ISO532_1_helper.Write_results_to_file.f_sone_to_phon(OutLoudness[0])
         print(f"\nLoudness (N) / sone ({SoundFieldString}): {OutLoudness[0] : 6.2f}\n\nLoudness level (LN) / phon ({SoundFieldString}): {LoudnessLevel : 5.1f}")
+        return (f"{OutLoudness[0] : 6.2f}", f"{LoudnessLevel : 5.1f}", OutSpecLoudness)
     
 
         

@@ -1,18 +1,16 @@
 import math
 
+dz = 0.1
 class Roughness:
-    def __init__():
-        dz = 0.1
-    
     @staticmethod
     def acousticRoughness(specificLoudness, fmod = 70):
-        specificLoudnessdiff = [0 for _ in range(specificLoudness)]
-        for i in range(specificLoudness):
+        specificLoudnessdiff = [0 for _ in range(len(specificLoudness))]
+        for i in range(len(specificLoudness)):
             if (i == 0):
-                specificLoudnessdiff[i] = specificLoudness[i]
+                specificLoudnessdiff[i] = specificLoudness[i][0]
             else:
-                specificLoudnessdiff[i] = abs(specificLoudness[i] - specificLoudness[i-1])
-        R = 0.3 * (fmod/1000) * sum(Roughness.dz * specificLoudnessdiff)
+                specificLoudnessdiff[i] = abs(specificLoudness[i][0] - specificLoudness[i-1][0])
+        R = 0.3 * (fmod/1000) * dz * sum(specificLoudnessdiff)
         
         return R
                     
