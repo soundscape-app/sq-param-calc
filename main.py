@@ -12,7 +12,7 @@ file_dir = sys.argv[3]
 pFileName = "Result.csv"
 pfile = open(pFileName, "w", newline="")
 wr = csv.writer(pfile)  
-first_row = ["filename", "Loudness level", "Loudness", "Roughness", "Sharpness(Zwicker Method)" ,"Acoustic Fluctuation"]
+first_row = ["Filename", "Loudness level [sone]", "Loudness [phon]", "Roughness [Asper]", "Sharpness(Zwicker Method) [acum]" ,"Acoustic Fluctuation [vacil]"]
 wr.writerow(first_row)
 for f in files:
     sys.argv[3] = f"./{file_dir}/{f}"
