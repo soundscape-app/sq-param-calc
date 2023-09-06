@@ -1,6 +1,7 @@
 from core.loudness.modules.loudness_ISO532_1_main import *
 from core.roughness.roughness import *
 from core.sharpness.sharpness import *
+from core.fluctuation_strength.fluctuation_strength import *
 import sys
 import os
 import csv
@@ -11,7 +12,7 @@ file_dir = sys.argv[3]
 pFileName = "Result.csv"
 pfile = open(pFileName, "w", newline="")
 wr = csv.writer(pfile)  
-first_row = ["filename", "Loudness level", "Loudness", "Roughness", "Sharpness(Zwicker Method)"]
+first_row = ["filename", "Loudness level", "Loudness", "Roughness", "Sharpness(Zwicker Method)" ,"Acoustic Fluctuation"]
 wr.writerow(first_row)
 for f in files:
     sys.argv[3] = f"./{file_dir}/{f}"
@@ -19,5 +20,6 @@ for f in files:
     specLoudness = to_write[2]
     roughness = Roughness.acousticRoughness(specLoudness)
     sharpness = Sharpness.calc_sharpness(to_write[0], specLoudness)
-    wr.writerow([f, to_write[0], to_write[1], roughness, sharpness[0]])
+    fluctuation = Fluctuation.acousticFluctuation(specLoudness)
+    wr.writerow([f, to_write[0], to_write[1], roughness, sharpness[0], fluctuation])
 pfile.close()
