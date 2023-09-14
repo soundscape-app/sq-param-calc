@@ -3,23 +3,47 @@ from core.roughness.roughness import *
 from core.sharpness.sharpness import *
 from core.fluctuation_strength.fluctuation_strength import *
 import sys
-import os
 import csv
 import copy
+import os.path
 
-files = os.listdir(f"./{sys.argv[3]}")
-file_dir = sys.argv[3]
-pFileName = "Result.csv"
-pfile = open(pFileName, "w", newline="")
-wr = csv.writer(pfile)  
-first_row = ["Filename", "Loudness level [sone]", "Loudness [phon]", "Roughness [Asper]", "Sharpness(Zwicker Method) [acum]" ,"Acoustic Fluctuation [vacil]"]
-wr.writerow(first_row)
-for f in files:
-    sys.argv[3] = f"./{file_dir}/{f}"
-    to_write = loudness_main(sys.argv)
-    specLoudness = to_write[2]
-    roughness = Roughness.acousticRoughness(specLoudness)
-    sharpness = Sharpness.calc_sharpness(to_write[0], specLoudness)
-    fluctuation = Fluctuation.acousticFluctuation(specLoudness)
-    wr.writerow([f, to_write[0], to_write[1], roughness, sharpness[0], fluctuation])
-pfile.close()
+def error_with_message(message):
+    print(message)
+    exit(1)
+
+class fileWrite:
+    def __init__(self, filename, analysis):
+        self.filename = filename
+        self.analysis = analysis
+        self.UNIT = {"Loudness": "soneGF", "Roughness": "asper",\
+        "Sharpness": "acum", "Fluctuation Strength": "vacil", "Tonality": "tu"}
+
+
+    def find(path, csvname):
+        if not os.path.exists(path + '/' + csvname):
+            return csvname
+        index = 1
+        while True:
+            if(index == 100):
+                error_with_message("[Error] Too many files")
+            next_check = csvname + f'({index})'
+            if not os.path.exists(path + '/' + next_check):
+                return next_check
+    
+    def calculation(self):
+        #Match the corresponding function with if-else
+        return [0, [(0, 0), (1, 1)]] 
+
+    def write_result(self, path, csvname):
+        csvname_numbered = find(path, csvname)
+        csvfile = open(path + '/' + csvname_numbered, 'w')
+        writer = csv.writer(csvfile)
+        wr.writerow(["Filename: ", self.filename])
+        wr.writerow(["Analysis: ", self.analysis + " vs. Time"])
+        wr.writerow(["Abscissa 1: ", "s"])
+        wr.writerow(["Channel 1: ", self.analysis, self.UNIT[self.analysis]])
+        result = calculation()
+        wr.writerow(["Value: ", result[0]])
+        wr.writerow()
+        for value in result[1]:
+            wr.writerow([value[0], value[1]])
