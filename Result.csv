@@ -1,13 +1,2 @@
-filename,Loudness level,Loudness,Roughness,Sharpness(Zwicker Method)
-Test signal 14 (propeller-driven airplane).wav, 14.35, 78.4,0.01456605270331904,0.86
-Test signal 15 (vehicle interior 40 kmh).wav,  8.11, 70.2,0.00677840453523334,0.81
-Test signal 16 (hairdryer).wav, 37.34, 92.2,0.01434399700563707,1.83
-Test signal 17 (machine gun).wav,  8.41, 70.7,0.003429375573421408,2.22
-Test signal 18 (hammer).wav, 10.45, 73.9,0.00410724673554611,1.5
-Test signal 19 (door creak).wav,  9.82, 73.0,0.004841803844683276,1.03
-Test signal 20 (shaking coins).wav, 12.56, 76.5,0.004876866120000022,2.98
-Test signal 21 (jackhammer).wav,  8.44, 70.8,0.002705055357528627,2.62
-Test signal 22 (ratchet wheel (large)).wav,  7.72, 69.5,0.003340619322570161,3.05
-Test signal 23 (typewriter).wav, 10.08, 73.3,0.0036076829962429138,2.66
-Test signal 24 (woodpecker).wav,  7.72, 69.5,0.003269458746955059,1.64
-Test signal 25 (full can rattle).wav,  6.33, 66.6,0.002781733612195801,2.7
+Filename,Loudness level [sone],Loudness [phon],Roughness [Asper],Sharpness(Zwicker Method) [acum]
+701_0.5_1.wav, 84.38, 104.0,0.04323625591410896,1.44

@@ -12,6 +12,7 @@ class Fluctuation:
 
     @staticmethod   
     def acousticFluctuation(specificLoudness, fmod=4):
+        print(specificLoudness)
         specificLoudnessdiff = np.zeros(len(specificLoudness))
         for i in range(len(specificLoudness)):
             if i == 0:
