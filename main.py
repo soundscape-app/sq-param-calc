@@ -40,7 +40,6 @@ class fileWrite:
             SN = Sharpness(dir, self.cal)
             return [SN.value(), []]
 
-        
         if(self.analysis == 'Roughness'):
             RN = Roughness(dir, self.cal)
             return [RN.value(), []]
@@ -60,17 +59,31 @@ class fileWrite:
         wr.writerow(["Channel 1: ", self.analysis, self.UNIT[self.analysis]])
         result = self.calculation(self.filename)
         wr.writerow(["Value: ", result[0]])
-        wr.writerow("")
+        for i in range(6, 19):
+            wr.writerow("")
         for value in result[1]:
             wr.writerow([value[0], value[1]])
 
-def main(filepath, cal):
+def main(filepath):
+    cal = 1
+    #using DFS
     filenames = os.listdir(path = filepath)
+    resultFile = ['results']
     factors = ['Loudness', 'Sharpness', 'Roughness']
-    for filename in filenames:
-        for fac in factors:
-            fw = fileWrite(filepath + '/' + filename, fac, cal)
-            fw.write_result(filepath, f"results/{filename[:-4]}", f"{filename[:-4]}-{fac}")
+    RealFileStack = [filepath]
+    ResultFileStack = [resultFile]
+    while len(RealFileStack):
+        RealFileTop = RealFileStack.pop()
+        ResultFileTop = ResultFileStack.pop()
+        if(os.path.isdir(RealFileTop)):
+            new_filenames = os.listdir(RealFileTop)
+            for fn in new_filenames:
+                RealFileStack += [RealFileTop + '/' + fn]
+                ResultFileStack += [ResultFileTop + '/' + fn]
+        else:
+            for fac in factors:
+                fw = fileWrite(RealFileTop, fac, cal)
+                fw.write_result(filepath, f"{ResultFileTop[:4]}", f"{fac}")
 
 #py main.py path cal
-main(sys.argv[1], int(sys.argv[2])) 
+main(sys.argv[1])

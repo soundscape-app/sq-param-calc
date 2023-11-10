@@ -22,4 +22,8 @@ class Sharpness:
         return sharpness
     
     def timeseg(self):
+        sig, fs = load(self.path, wav_calib = self.cal)
+        N, N_specific, bark_axis, time_axis = loudness_din_st_perseg(sig, fs, nperseg=8192 * 2)
+        print(N)
+        return []
         return
