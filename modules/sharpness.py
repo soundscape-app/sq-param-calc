@@ -15,6 +15,7 @@ class Sharpness:
     def __init__(self, path, cal):
         self.path = path
         self.cal = cal
+        self.size = 10
 
     def value(self):
         sig, fs = load(self.path, wav_calib = self.cal)
@@ -23,7 +24,9 @@ class Sharpness:
     
     def timeseg(self):
         sig, fs = load(self.path, wav_calib = self.cal)
-        N, N_specific, bark_axis, time_axis = loudness_din_st_perseg(sig, fs, nperseg=8192 * 2)
-        print(N)
-        return []
-        return
+        sharpness, time_axis = sharpness_din_perseg(sig, fs, nperseg = len(sig) // self.size * 2, weighting="din")
+        print(time_axis)
+        print(sharpness) 
+        time_axis = [0] + time_axis
+        sharpness = [0] + sharpness
+        return [time_axis, sharpness]

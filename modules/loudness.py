@@ -15,6 +15,7 @@ class Loudness:
     def __init__(self, path, cal):
         self.path = path
         self.cal = cal
+        self.size = 10
 
     def value(self):
         sig, fs = load(self.path, wav_calib = self.cal)
@@ -23,6 +24,7 @@ class Loudness:
     
     def timeseg(self):
         sig, fs = load(self.path, wav_calib = self.cal)
-        N, N_specific, bark_axis, time_axis = loudness_zwst_perseg(sig, fs, nperseg=8192 * 2)
-        print(N)
-        return []
+        N, N_specific, bark_axis, time_axis = loudness_zwst_perseg(sig, fs, nperseg = len(sig) // self.size * 2)
+        time_axis = [0] + time_axis
+        N = [0] + N
+        return [time_axis, N]

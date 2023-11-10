@@ -20,4 +20,4 @@ class Roughness:
     def timeseg(self):
         sig, fs = load(self.path, wav_calib = self.cal)
         r, r_spec, bark, time = roughness_dw(sig, fs, overlap=0)
-        return r
+        return [time, r]
